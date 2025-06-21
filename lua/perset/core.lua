@@ -19,9 +19,9 @@ end
 
 local function init_git_repo(path)
   if not is_git_repo(path) then
-    os.execute("git init " .. vim.fn.shellescape(path))
-    os.execute("git -C " .. vim.fn.shellescape(path) .. " add .")
-    os.execute("git -C " .. vim.fn.shellescape(path) .. " commit -m 'Initial settings commit'")
+    os.execute("git init -q " .. vim.fn.shellescape(path))
+    os.execute("git -C " .. vim.fn.shellescape(path) .. " add . > /dev/null 2>&1")
+    os.execute("git -C " .. vim.fn.shellescape(path) .. " commit -m 'Initial settings commit' > /dev/null 2>&1")
   end
 end
 
