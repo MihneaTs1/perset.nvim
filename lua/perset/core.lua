@@ -1,3 +1,5 @@
+-- lua/perset/core.lua
+
 local M = {}
 local settings_path = nil
 
@@ -30,7 +32,7 @@ function M.load_settings()
     pcall(function() vim.opt[k] = v end)
   end
 
-  -- Apply window-local options to all windows and future ones
+  -- Apply window-local options
   local wopts = decoded.window or {}
   vim.api.nvim_create_autocmd("WinNew", {
     callback = function()
@@ -103,6 +105,27 @@ function M.save_settings_all()
 
   local encoded = vim.fn.json_encode(data)
   vim.fn.writefile(vim.split(encoded, "\n"), settings_path)
+end
+
+function M.setup_commands()
+  vim.api.nvim_create_user_command("PersetSave", function()
+    M.save_settings_all()
+    print("✅ Settings saved to " .. settings_path)
+  end, {})
+
+  vim.api.nvim_create_user_command("PersetLoad", function()
+    M.load_settings()
+    print("🔄 Settings loaded from " .. settings_path)
+  end, {})
+
+  vim.api.nvim_create_user_command("PersetPath", function()
+    print("🛠 perset.nvim path: " .. settings_path)
+  end, {})
+
+  vim.api.nvim_create_user_command("PersetReset", function()
+    vim.fn.delete(settings_path)
+    print("🧹 Settings file deleted: " .. settings_path)
+  end, {})
 end
 
 return M
