@@ -89,15 +89,22 @@ function M.load_settings()
     return
   end
 
-  -- Apply global options
+  -- Apply global options and propagate to all buffers
   local gopts = decoded.global or {}
   for k, v in pairs(gopts) do
     if should_include_option(k) then
-      pcall(function() vim.opt[k] = v end)
+      pcall(function()
+        vim.opt[k] = v
+        for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+          if vim.api.nvim_buf_is_loaded(buf) then
+            pcall(function() vim.api.nvim_buf_set_option(buf, k, v) end)
+          end
+        end
+      end)
     end
   end
 
-  -- Apply window-local options
+  -- Apply window-local options to all windows
   local wopts = decoded.window or {}
   vim.api.nvim_create_autocmd("WinNew", {
     callback = function()
