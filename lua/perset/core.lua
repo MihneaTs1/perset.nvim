@@ -146,10 +146,15 @@ function M.save_settings_all()
 
   local wopts = {}
   local win = vim.api.nvim_get_current_win()
-  for _, name in ipairs({ "number", "relativenumber", "cursorline", "wrap" }) do
-    local ok, val = pcall(function() return vim.api.nvim_win_get_option(win, name) end)
-    if ok then
-      wopts[name] = val
+  for k, _ in pairs(vim.wo) do
+    local ok, val = pcall(function()
+      return vim.api.nvim_win_get_option(win, k)
+    end)
+    if ok and type(val) ~= "function" and val ~= vim.empty_dict() then
+      local enc_ok = pcall(vim.fn.json_encode, { [k] = val })
+      if enc_ok then
+        wopts[k] = val
+      end
     end
   end
 
