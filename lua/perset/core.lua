@@ -179,22 +179,22 @@ function M.save_settings_all()
 
   local colorscheme = vim.g.colors_name
 
-    local bufopts = {}
-  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-    if vim.api.nvim_buf_is_loaded(buf) then
-      for k, info in pairs(vim.api.nvim_get_all_options_info()) do
-        if info.scope == "buf" then
-          local ok, val = pcall(vim.api.nvim_buf_get_option, buf, k)
-          if ok and type(val) ~= "function" and val ~= vim.empty_dict() then
-            local enc_ok = pcall(vim.fn.json_encode, { [k] = val })
-            if enc_ok then
-              bufopts[k] = val
-            end
-          end
-        end
-      end
-    end
-  end
+  -- local bufopts = {}
+  -- for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+  --   if vim.api.nvim_buf_is_loaded(buf) then
+  --     for k, info in pairs(vim.api.nvim_get_all_options_info()) do
+  --       if info.scope == "buf" then
+  --         local ok, val = pcall(vim.api.nvim_buf_get_option, buf, k)
+  --         if ok and type(val) ~= "function" and val ~= vim.empty_dict() then
+  --           local enc_ok = pcall(vim.fn.json_encode, { [k] = val })
+  --           if enc_ok then
+  --             bufopts[k] = val
+  --           end
+  --         end
+  --       end
+  --     end
+  --   end
+  -- end
 
   local data = {
     global = gopts,
