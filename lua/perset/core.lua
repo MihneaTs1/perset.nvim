@@ -226,6 +226,10 @@ function M.setup_commands()
       vim.notify("[perset] Git is disabled.", vim.log.levels.INFO)
       return
     end
+
+    local NuiMenu = require("nui.menu")
+    local event = require("nui.utils.autocmd").event
+
     local dir = vim.fn.fnamemodify(settings_path, ":h")
     local cmd = string.format("%s -C %s log --pretty=format:'%%h %%ad %%s' --date=short -- %s",
       git_cmd,
@@ -239,26 +243,60 @@ function M.setup_commands()
       return
     end
 
-    vim.ui.select(output, {
-      prompt = "Select a version to view",
-      format_item = function(item)
-        return item
-      end,
-    }, function(choice)
-      if not choice then return end
-      local commit = choice:match("^%w+")
-      if not commit then return end
+    local items = {}
+    for _, line in ipairs(output) do
+      table.insert(items, {
+        text = line,
+        value = line:match("^%w+")
+      })
+    end
 
-      local tmpfile = vim.fn.tempname() .. ".json"
-      local fetch_cmd = string.format("%s -C %s show %s:%s > %s",
-        git_cmd,
-        vim.fn.shellescape(dir),
-        commit,
-        vim.fn.fnamemodify(settings_path, ":t"),
-        tmpfile
-      )
-      os.execute(fetch_cmd)
-      vim.cmd("tabnew " .. tmpfile)
+    local menu = NuiMenu({
+      position = "50%",
+      size = {
+        width = 60,
+        height = math.min(20, #items),
+      },
+      border = {
+        style = "rounded",
+        text = {
+          top = "[ perset history ]",
+          top_align = "center",
+        },
+      },
+      win_options = {
+        winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+      },
+    }, {
+      lines = vim.tbl_map(function(item)
+        return NuiMenu.item(item.text, { value = item.value })
+      end, items),
+      max_width = 60,
+      keymap = {
+        focus_next = { "j", "<Down>" },
+        focus_prev = { "k", "<Up>" },
+        close = { "<Esc>", "q" },
+        submit = { "<CR>" },
+      },
+      on_submit = function(item)
+        local commit = item.value
+        if not commit then return end
+        local tmpfile = vim.fn.tempname() .. ".json"
+        local fetch_cmd = string.format("%s -C %s show %s:%s > %s",
+          git_cmd,
+          vim.fn.shellescape(dir),
+          commit,
+          vim.fn.fnamemodify(settings_path, ":t"),
+          tmpfile
+        )
+        os.execute(fetch_cmd)
+        vim.cmd("tabnew " .. tmpfile)
+      end,
+    })
+
+    menu:mount()
+    menu:on(event.BufLeave, function()
+      menu:unmount()
     end)
   end, {})
 end
