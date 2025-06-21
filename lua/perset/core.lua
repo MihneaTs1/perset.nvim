@@ -44,6 +44,8 @@ function M.load_settings()
   end
 
   local content = vim.fn.readfile(settings_path)
+  if not content or vim.tbl_isempty(content) then return end
+
   local decoded = vim.fn.json_decode(table.concat(content, "\n")) or {}
 
   -- Apply global options
