@@ -124,6 +124,12 @@ function M.load_settings()
   for k, v in pairs(gvars) do
     pcall(function() vim.g[k] = v end)
   end
+
+  -- Apply buffer-local options
+  local bufopts = decoded.buffer or {}
+  for k, v in pairs(bufopts) do
+    pcall(function() vim.api.nvim_buf_set_option(0, k, v) end)
+  end
 end
 
 function M.save_settings_all()
@@ -169,11 +175,26 @@ function M.save_settings_all()
 
   local colorscheme = vim.g.colors_name
 
+  local bufopts = {}
+  local buf = vim.api.nvim_get_current_buf()
+  for k, info in pairs(vim.api.nvim_get_all_options_info()) do
+    if info.scope == "buf" then
+      local ok, val = pcall(vim.api.nvim_buf_get_option, buf, k)
+      if ok and type(val) ~= "function" and val ~= vim.empty_dict() then
+        local enc_ok = pcall(vim.fn.json_encode, { [k] = val })
+        if enc_ok then
+          bufopts[k] = val
+        end
+      end
+    end
+  end
+
   local data = {
     global = gopts,
     window = wopts,
     colorscheme = colorscheme,
     vimvars = gvars,
+    buffer = bufopts,
   }
 
   local encoded = vim.fn.json_encode(data)
