@@ -13,9 +13,28 @@ local function ensure_path(path)
   end
 end
 
+local function is_git_repo(path)
+  return vim.fn.isdirectory(path .. "/.git") == 1
+end
+
+local function init_git_repo(path)
+  if not is_git_repo(path) then
+    os.execute("git init " .. vim.fn.shellescape(path))
+    os.execute("git -C " .. vim.fn.shellescape(path) .. " add .")
+    os.execute("git -C " .. vim.fn.shellescape(path) .. " commit -m 'Initial settings commit'")
+  end
+end
+
+local function git_commit_settings()
+  local dir = vim.fn.fnamemodify(settings_path, ":h")
+  os.execute("git -C " .. vim.fn.shellescape(dir) .. " add " .. vim.fn.shellescape(settings_path))
+  os.execute("git -C " .. vim.fn.shellescape(dir) .. " commit -m 'Update settings (" .. os.date() .. ")'")
+end
+
 function M.setup(path)
   settings_path = vim.fn.expand(path)
   ensure_path(settings_path)
+  init_git_repo(vim.fn.fnamemodify(settings_path, ":h"))
   M.setup_commands()
 end
 
@@ -106,6 +125,7 @@ function M.save_settings_all()
 
   local encoded = vim.fn.json_encode(data)
   vim.fn.writefile(vim.split(encoded, "\n"), settings_path)
+  git_commit_settings()
 end
 
 function M.setup_commands()
@@ -127,6 +147,18 @@ function M.setup_commands()
     vim.fn.delete(settings_path)
     print("🧹 Settings file deleted: " .. settings_path)
   end, {})
+
+  vim.api.nvim_create_user_command("PersetLog", function()
+    local dir = vim.fn.fnamemodify(settings_path, ":h")
+    vim.cmd("split | terminal git -C " .. dir .. " log --oneline --decorate --graph --color=always")
+  end, {})
+
+  vim.api.nvim_create_user_command("PersetRevert", function(opts)
+    local dir = vim.fn.fnamemodify(settings_path, ":h")
+    local commit = opts.args
+    os.execute("git -C " .. vim.fn.shellescape(dir) .. " checkout " .. commit .. " -- " .. vim.fn.shellescape(settings_path))
+    print("🔁 Settings reverted to " .. commit .. ": " .. settings_path)
+  end, { nargs = 1 })
 end
 
 return M
