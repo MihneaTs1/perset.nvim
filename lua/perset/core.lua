@@ -44,9 +44,19 @@ function M.load_settings()
   end
 
   local content = vim.fn.readfile(settings_path)
-  if not content or vim.tbl_isempty(content) then return end
+  if not content or vim.tbl_isempty(content) then
+    vim.notify("[perset] settings file is empty or unreadable: " .. settings_path, vim.log.levels.WARN)
+    return
+  end
 
-  local decoded = vim.fn.json_decode(table.concat(content, "\n")) or {}
+  local ok, decoded = pcall(function()
+    return vim.fn.json_decode(table.concat(content, "
+"))
+  end)
+  if not ok or type(decoded) ~= "table" then
+    vim.notify("[perset] Failed to parse settings file: " .. settings_path, vim.log.levels.WARN)
+    return
+  end
 
   -- Apply global options
   local gopts = decoded.global or {}
