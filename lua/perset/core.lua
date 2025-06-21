@@ -127,8 +127,12 @@ function M.load_settings()
 
   -- Apply buffer-local options
   local bufopts = decoded.buffer or {}
-  for k, v in pairs(bufopts) do
-    pcall(function() vim.api.nvim_buf_set_option(0, k, v) end)
+  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_loaded(buf) then
+      for k, v in pairs(bufopts) do
+        pcall(function() vim.api.nvim_buf_set_option(buf, k, v) end)
+      end
+    end
   end
 end
 
