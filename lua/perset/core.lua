@@ -1,7 +1,10 @@
 -- lua/perset/core.lua
 
 local M = {}
+
 local settings_path = nil
+local git_enabled = true
+local git_cmd = "git"
 
 local function ensure_path(path)
   local dir = vim.fn.fnamemodify(path, ":h")
@@ -18,21 +21,34 @@ local function is_git_repo(path)
 end
 
 local function init_git_repo(path)
+  if not git_enabled then return end
   if not is_git_repo(path) then
-    os.execute("git init -q " .. vim.fn.shellescape(path))
-    os.execute("git -C " .. vim.fn.shellescape(path) .. " add . > /dev/null 2>&1")
-    os.execute("git -C " .. vim.fn.shellescape(path) .. " commit -m 'Initial settings commit' > /dev/null 2>&1")
+    local ok1 = os.execute(git_cmd .. " init -q " .. vim.fn.shellescape(path) .. " > /dev/null 2>&1")
+    local ok2 = os.execute(git_cmd .. " -C " .. vim.fn.shellescape(path) .. " add . > /dev/null 2>&1")
+    local ok3 = os.execute(git_cmd .. " -C " .. vim.fn.shellescape(path) .. " commit -m 'Initial settings commit' > /dev/null 2>&1")
+    if not (ok1 == 0 and ok2 == 0 and ok3 == 0) then
+      vim.notify("[perset] Git repo init failed. Disabling Git integration.", vim.log.levels.WARN)
+      git_enabled = false
+    end
   end
 end
 
 local function git_commit_settings()
+  if not git_enabled then return end
   local dir = vim.fn.fnamemodify(settings_path, ":h")
-  os.execute("git -C " .. vim.fn.shellescape(dir) .. " add " .. vim.fn.shellescape(settings_path))
-  os.execute("git -C " .. vim.fn.shellescape(dir) .. " commit -m 'Update settings (" .. os.date() .. ")'")
+  local ok1 = os.execute(git_cmd .. " -C " .. vim.fn.shellescape(dir) .. " add " .. vim.fn.shellescape(settings_path) .. " > /dev/null 2>&1")
+  local ok2 = os.execute(git_cmd .. " -C " .. vim.fn.shellescape(dir) .. " commit -m 'Update settings (" .. os.date() .. ")' > /dev/null 2>&1")
+  if not (ok1 == 0 and ok2 == 0) then
+    vim.notify("[perset] Git commit failed. Disabling Git integration.", vim.log.levels.WARN)
+    git_enabled = false
+  end
 end
 
-function M.setup(path)
+function M.setup(path, opts)
+  opts = opts or {}
   settings_path = vim.fn.expand(path)
+  git_enabled = opts.git ~= false
+  git_cmd = opts.git_cmd or "git"
   ensure_path(settings_path)
   init_git_repo(vim.fn.fnamemodify(settings_path, ":h"))
   M.setup_commands()
@@ -160,14 +176,22 @@ function M.setup_commands()
   end, {})
 
   vim.api.nvim_create_user_command("PersetLog", function()
+    if not git_enabled then
+      vim.notify("[perset] Git is disabled.", vim.log.levels.INFO)
+      return
+    end
     local dir = vim.fn.fnamemodify(settings_path, ":h")
-    vim.cmd("split | terminal git -C " .. dir .. " log --oneline --decorate --graph --color=always")
+    vim.cmd("split | terminal " .. git_cmd .. " -C " .. dir .. " log --oneline --decorate --graph --color=always")
   end, {})
 
   vim.api.nvim_create_user_command("PersetRevert", function(opts)
+    if not git_enabled then
+      vim.notify("[perset] Git is disabled.", vim.log.levels.INFO)
+      return
+    end
     local dir = vim.fn.fnamemodify(settings_path, ":h")
     local commit = opts.args
-    os.execute("git -C " .. vim.fn.shellescape(dir) .. " checkout " .. commit .. " -- " .. vim.fn.shellescape(settings_path))
+    os.execute(git_cmd .. " -C " .. vim.fn.shellescape(dir) .. " checkout " .. commit .. " -- " .. vim.fn.shellescape(settings_path) .. " > /dev/null 2>&1")
     print("🔁 Settings reverted to " .. commit .. ": " .. settings_path)
   end, { nargs = 1 })
 end
