@@ -89,61 +89,7 @@ function M.load_settings()
     return
   end
 
-  -- Apply vim.opt
-  local gopts = decoded.global or {}
-  for k, v in pairs(gopts) do
-    pcall(function() vim.opt[k] = v end)
-  end
-
-  -- Apply vim.g
-  local gvars = decoded.vimvars or {}
-  for k, v in pairs(gvars) do
-    pcall(function() vim.g[k] = v end)
-  end
-end
-
-  local content = vim.fn.readfile(settings_path)
-  if not content or vim.tbl_isempty(content) then
-    vim.notify("[perset] settings file is empty or unreadable: " .. settings_path, vim.log.levels.WARN)
-    return
-  end
-
-  local ok, decoded = pcall(function()
-    return vim.fn.json_decode(table.concat(content, "\n"))
-  end)
-  if not ok or type(decoded) ~= "table" then
-    vim.notify("[perset] Failed to parse settings file: " .. settings_path, vim.log.levels.WARN)
-    return
-  end
-
-  -- Apply vim.opt
-  local gopts = decoded.global or {}
-  for k, v in pairs(gopts) do
-    pcall(function() vim.opt[k] = v end)
-  end
-
-  -- Apply vim.g
-  local gvars = decoded.vimvars or {}
-  for k, v in pairs(gvars) do
-    pcall(function() vim.g[k] = v end)
-  end
-end
-
-  local content = vim.fn.readfile(settings_path)
-  if not content or vim.tbl_isempty(content) then
-    vim.notify("[perset] settings file is empty or unreadable: " .. settings_path, vim.log.levels.WARN)
-    return
-  end
-
-  local ok, decoded = pcall(function()
-    return vim.fn.json_decode(table.concat(content, "\n"))
-  end)
-  if not ok or type(decoded) ~= "table" then
-    vim.notify("[perset] Failed to parse settings file: " .. settings_path, vim.log.levels.WARN)
-    return
-  end
-
-  -- Apply global options
+  -- Apply global options and propagate to all buffers
   local gopts = decoded.global or {}
   for k, v in pairs(gopts) do
     if should_include_option(k) then
@@ -158,7 +104,7 @@ end
     end
   end
 
-  -- Apply window-local options
+  -- Apply window-local options to all windows
   local wopts = decoded.window or {}
   vim.api.nvim_create_autocmd("WinNew", {
     callback = function()
@@ -240,21 +186,22 @@ function M.save_settings_all()
 
   local colorscheme = vim.g.colors_name
 
-  local bufopts = {}
-  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-    if vim.api.nvim_buf_is_loaded(buf) then
-      for k, info in pairs(vim.api.nvim_get_all_options_info()) do
-        if info.scope == "buf" then
-          local ok, val = pcall(vim.api.nvim_buf_get_option, buf, k)
-      if ok and type(val) ~= "function" and val ~= vim.empty_dict() then
-        local enc_ok = pcall(vim.fn.json_encode, { [k] = val })
-        if enc_ok then
-            bufopts[k] = val
-          end
-        end
-      end
-    end
-  end
+  -- local bufopts = {}
+  -- for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+  --   if vim.api.nvim_buf_is_loaded(buf) then
+  --     for k, info in pairs(vim.api.nvim_get_all_options_info()) do
+  --       if info.scope == "buf" then
+  --         local ok, val = pcall(vim.api.nvim_buf_get_option, buf, k)
+  --         if ok and type(val) ~= "function" and val ~= vim.empty_dict() then
+  --           local enc_ok = pcall(vim.fn.json_encode, { [k] = val })
+  --           if enc_ok then
+  --             bufopts[k] = val
+  --           end
+  --         end
+  --       end
+  --     end
+  --   end
+  -- end
 
   local data = {
     global = gopts,
