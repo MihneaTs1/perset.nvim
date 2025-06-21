@@ -116,6 +116,33 @@ end
     return
   end
 
+  -- Apply vim.opt
+  local gopts = decoded.global or {}
+  for k, v in pairs(gopts) do
+    pcall(function() vim.opt[k] = v end)
+  end
+
+  -- Apply vim.g
+  local gvars = decoded.vimvars or {}
+  for k, v in pairs(gvars) do
+    pcall(function() vim.g[k] = v end)
+  end
+end
+
+  local content = vim.fn.readfile(settings_path)
+  if not content or vim.tbl_isempty(content) then
+    vim.notify("[perset] settings file is empty or unreadable: " .. settings_path, vim.log.levels.WARN)
+    return
+  end
+
+  local ok, decoded = pcall(function()
+    return vim.fn.json_decode(table.concat(content, "\n"))
+  end)
+  if not ok or type(decoded) ~= "table" then
+    vim.notify("[perset] Failed to parse settings file: " .. settings_path, vim.log.levels.WARN)
+    return
+  end
+
   -- Apply global options
   local gopts = decoded.global or {}
   for k, v in pairs(gopts) do
