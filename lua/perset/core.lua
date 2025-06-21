@@ -16,6 +16,7 @@ end
 function M.setup(path)
   settings_path = vim.fn.expand(path)
   ensure_path(settings_path)
+  M.setup_commands()
 end
 
 function M.load_settings()
