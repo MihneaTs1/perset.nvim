@@ -50,8 +50,7 @@ function M.load_settings()
   end
 
   local ok, decoded = pcall(function()
-    return vim.fn.json_decode(table.concat(content, "
-"))
+    return vim.fn.json_decode(table.concat(content, ""))
   end)
   if not ok or type(decoded) ~= "table" then
     vim.notify("[perset] Failed to parse settings file: " .. settings_path, vim.log.levels.WARN)
