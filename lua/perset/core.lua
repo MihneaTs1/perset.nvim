@@ -5,6 +5,8 @@ local M = {}
 local settings_path = nil
 local git_enabled = true
 local git_cmd = "git"
+local opt_whitelist = nil
+local opt_blacklist = nil
 
 local function ensure_path(path)
   local dir = vim.fn.fnamemodify(path, ":h")
@@ -49,9 +51,23 @@ function M.setup(path, opts)
   settings_path = vim.fn.expand(path)
   git_enabled = opts.git ~= false
   git_cmd = opts.git_cmd or "git"
+  opt_whitelist = opts.whitelist or nil
+  opt_blacklist = opts.blacklist or nil
   ensure_path(settings_path)
   init_git_repo(vim.fn.fnamemodify(settings_path, ":h"))
   M.setup_commands()
+end
+
+local function should_include_option(key)
+  if opt_whitelist and vim.tbl_contains(opt_whitelist, key) then
+    return not (opt_blacklist and vim.tbl_contains(opt_blacklist, key))
+  elseif opt_whitelist then
+    return false
+  elseif opt_blacklist then
+    return not vim.tbl_contains(opt_blacklist, key)
+  else
+    return true
+  end
 end
 
 function M.load_settings()
@@ -76,7 +92,9 @@ function M.load_settings()
   -- Apply global options
   local gopts = decoded.global or {}
   for k, v in pairs(gopts) do
-    pcall(function() vim.opt[k] = v end)
+    if should_include_option(k) then
+      pcall(function() vim.opt[k] = v end)
+    end
   end
 
   -- Apply window-local options
@@ -115,11 +133,13 @@ function M.save_settings_all()
 
   local gopts = {}
   for k, v in pairs(vim.opt) do
-    local ok, val = pcall(function() return v:get() end)
-    if ok and type(val) ~= "function" and val ~= vim.empty_dict() then
-      local enc_ok = pcall(vim.fn.json_encode, { [k] = val })
-      if enc_ok then
-        gopts[k] = val
+    if should_include_option(k) then
+      local ok, val = pcall(function() return v:get() end)
+      if ok and type(val) ~= "function" and val ~= vim.empty_dict() then
+        local enc_ok = pcall(vim.fn.json_encode, { [k] = val })
+        if enc_ok then
+          gopts[k] = val
+        end
       end
     end
   end
