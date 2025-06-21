@@ -146,15 +146,14 @@ function M.save_settings_all()
 
   local wopts = {}
   local win = vim.api.nvim_get_current_win()
-  local seen = {}
-  for _, name in ipairs(vim.api.nvim_get_option_info_list()) do
-    if name.scope == "win" and not seen[name.name] then
-      seen[name.name] = true
-      local ok, val = pcall(vim.api.nvim_win_get_option, win, name.name)
+  local option_info = vim.api.nvim_get_all_options_info()
+  for k, info in pairs(option_info) do
+    if info.scope == "win" then
+      local ok, val = pcall(vim.api.nvim_win_get_option, win, k)
       if ok and type(val) ~= "function" and val ~= vim.empty_dict() then
-        local enc_ok = pcall(vim.fn.json_encode, { [name.name] = val })
+        local enc_ok = pcall(vim.fn.json_encode, { [k] = val })
         if enc_ok then
-          wopts[name.name] = val
+          wopts[k] = val
         end
       end
     end
