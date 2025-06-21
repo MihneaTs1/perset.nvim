@@ -214,6 +214,47 @@ function M.setup_commands()
     os.execute(git_cmd .. " -C " .. vim.fn.shellescape(dir) .. " checkout " .. commit .. " -- " .. vim.fn.shellescape(settings_path) .. " > /dev/null 2>&1")
     print("🔁 Settings reverted to " .. commit .. ": " .. settings_path)
   end, { nargs = 1 })
+
+  vim.api.nvim_create_user_command("PersetHist", function()
+    if not git_enabled then
+      vim.notify("[perset] Git is disabled.", vim.log.levels.INFO)
+      return
+    end
+    local dir = vim.fn.fnamemodify(settings_path, ":h")
+    local cmd = string.format("%s -C %s log --pretty=format:'%%h %%ad %%s' --date=short -- %s",
+      git_cmd,
+      vim.fn.shellescape(dir),
+      vim.fn.shellescape(settings_path)
+    )
+
+    local output = vim.fn.systemlist(cmd)
+    if vim.v.shell_error ~= 0 or not output or vim.tbl_isempty(output) then
+      vim.notify("[perset] No Git history available.", vim.log.levels.WARN)
+      return
+    end
+
+    vim.ui.select(output, {
+      prompt = "Select a version to view",
+      format_item = function(item)
+        return item
+      end,
+    }, function(choice)
+      if not choice then return end
+      local commit = choice:match("^%w+")
+      if not commit then return end
+
+      local tmpfile = vim.fn.tempname() .. ".json"
+      local fetch_cmd = string.format("%s -C %s show %s:%s > %s",
+        git_cmd,
+        vim.fn.shellescape(dir),
+        commit,
+        vim.fn.fnamemodify(settings_path, ":t"),
+        tmpfile
+      )
+      os.execute(fetch_cmd)
+      vim.cmd("tabnew " .. tmpfile)
+    end)
+  end, {})
 end
 
 return M
