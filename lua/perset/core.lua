@@ -147,9 +147,7 @@ function M.save_settings_all()
   local wopts = {}
   local win = vim.api.nvim_get_current_win()
   for k, _ in pairs(vim.wo) do
-    local ok, val = pcall(function()
-      return vim.api.nvim_win_get_option(win, k)
-    end)
+    local ok, val = pcall(function() return vim.api.nvim_win_get_option(win, k) end)
     if ok and type(val) ~= "function" and val ~= vim.empty_dict() then
       local enc_ok = pcall(vim.fn.json_encode, { [k] = val })
       if enc_ok then
@@ -157,7 +155,7 @@ function M.save_settings_all()
       end
     end
   end
-
+  
   local gvars = {}
   for k, v in pairs(vim.g) do
     local ok = pcall(function() return vim.fn.json_encode({ [k] = v }) end)
